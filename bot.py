@@ -8,6 +8,13 @@ from datetime import datetime
 # Настройки
 TOKEN = "8128748378:AAF7AJSxU6kj0xE_Ndf0Q6YoP7-ngyRaszc"
 
+# ⬇️⬇️⬇️ ДОБАВЬ СЮДА ID МЕНЕДЖЕРОВ ⬇️⬇️⬇️
+MANAGERS = [
+    494645329,   # Замени на свой ID
+    # 987654321    # Замени на ID второго менеджера
+]
+# ⬆️⬆️⬆️ ДОБАВЬ СЮДА ID МЕНЕДЖЕРОВ ⬆️⬆️⬆️
+
 # Включим логирование
 logging.basicConfig(level=logging.INFO)
 
@@ -22,6 +29,14 @@ def load_shifts():
 def save_shifts():
     with open('shifts.json', 'w', encoding='utf-8') as f:
         json.dump(shifts, f, ensure_ascii=False, indent=2)
+
+# Функция для уведомлений менеджерам
+async def notify_managers(message: str, bot):
+    for manager_id in MANAGERS:
+        try:
+            await bot.send_message(chat_id=manager_id, text=message)
+        except Exception as e:
+            print(f"Ошибка уведомления для {manager_id}: {e}")
 
 # Загружаем данные
 shifts = load_shifts()
@@ -184,6 +199,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if date_valid and time_valid:
         shifts[text] = user_name
         save_shifts()
+        
+        # ⬇️ УВЕДОМЛЕНИЕ МЕНЕДЖЕРАМ О ДОБАВЛЕНИИ
+        await notify_managers(
+            f"📝 НОВАЯ ЗАПИСЬ\n"
+            f"👤 {user_name}\n"
+            f"📅 {text}\n"
+            f"⏰ {datetime.now().strftime('%H:%M %d.%m.%Y')}",
+            context.bot
+        )
+        
         await update.message.reply_text(f"✅ {user_name}, вы записаны на: {text}")
     else:
         await update.message.reply_text(
@@ -204,9 +229,24 @@ async def my_shift(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Команда /cancel
 async def cancel_shift(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.message.from_user.first_name
+    
+    # Сохраняем какие записи удаляем для уведомления
+    deleted_shifts = [shift for shift, name in shifts.items() if name == user_name]
+    
     global shifts
     shifts = {k: v for k, v in shifts.items() if v != user_name}
     save_shifts()
+    
+    # ⬇️ УВЕДОМЛЕНИЕ МЕНЕДЖЕРАМ ОБ УДАЛЕНИИ
+    if deleted_shifts:
+        await notify_managers(
+            f"❌ УДАЛЕНЫ ЗАПИСИ\n"
+            f"👤 {user_name}\n"
+            f"🗑️ Удалено записей: {len(deleted_shifts)}\n"
+            f"⏰ {datetime.now().strftime('%H:%M %d.%m.%Y')}",
+            context.bot
+        )
+    
     await update.message.reply_text("❌ Все ваши записи отменены")
 
 # Основная функция
@@ -221,7 +261,7 @@ def main():
     application.add_handler(CommandHandler("help", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("✅ Бот запущен на Railway!")
+    print("✅ Бот запущен на Railway с уведомлениями для менеджеров!")
     application.run_polling()
 
 if __name__ == "__main__":
