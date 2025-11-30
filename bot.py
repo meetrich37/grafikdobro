@@ -7,7 +7,7 @@ from datetime import datetime
 
 # Настройки
 TOKEN = "8128748378:AAF7AJSxU6kj0xE_Ndf0Q6YoP7-ngyRaszc"
-ADMINS = ["ddobryden37", "anydobro"]  # Оба админа (без @)
+ADMINS = ["ddobryden37", "Anydobro"]  # Оба админа (без @)
 
 # Включим логирование
 logging.basicConfig(level=logging.INFO)
