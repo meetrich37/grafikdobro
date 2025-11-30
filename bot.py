@@ -216,7 +216,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         time_valid = False
 
     if date_valid and time_valid:
-        shifts[text] = user_name
+    # Нормализуем дату (3.12 → 03.12)
+    normalized_date = normalize_date(date_part)
+    normalized_text = f"{normalized_date} {time_part}"
+    shifts[normalized_text] = user_name
+    save_shifts()
+    await update.message.reply_text(f"✅ {user_name}, вы записаны на: {normalized_text}")
         save_shifts()
         await update.message.reply_text(f"✅ {user_name}, вы записаны на: {text}")
     else:
