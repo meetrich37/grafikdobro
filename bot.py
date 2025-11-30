@@ -7,7 +7,7 @@ from datetime import datetime
 
 # Настройки
 TOKEN = "8128748378:AAF7AJSxU6kj0xE_Ndf0Q6YoP7-ngyRaszc"
-ADMINS = ["ddobryden37", "anydobro"]  # ⬅️ Оба админа (без @)
+ADMINS = ["ddobryden37", "anydobro"]  # Оба админа (без @)
 
 # Включим логирование
 logging.basicConfig(level=logging.INFO)
@@ -24,12 +24,24 @@ def save_shifts():
     with open('shifts.json', 'w', encoding='utf-8') as f:
         json.dump(shifts, f, ensure_ascii=False, indent=2)
 
-# Загружаем данные
-shifts = load_shifts()
+# Функция для нормализации даты (3.12 → 03.12)
+def normalize_date(date_str):
+    try:
+        day, month = date_str.split('.')
+        # Добавляем ведущий ноль если день однозначный
+        day = day.zfill(2)
+        # Добавляем ведущий ноль если месяц однозначный  
+        month = month.zfill(2)
+        return f"{day}.{month}"
+    except:
+        return date_str
 
 # Функция проверки админа
 def is_admin(update: Update):
     return update.message.from_user.username in ADMINS
+
+# Загружаем данные
+shifts = load_shifts()
 
 # Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -216,14 +228,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         time_valid = False
 
     if date_valid and time_valid:
-    # Нормализуем дату (3.12 → 03.12)
-    normalized_date = normalize_date(date_part)
-    normalized_text = f"{normalized_date} {time_part}"
-    shifts[normalized_text] = user_name
-    save_shifts()
-    await update.message.reply_text(f"✅ {user_name}, вы записаны на: {normalized_text}")
+        # Нормализуем дату (3.12 → 03.12)
+        normalized_date = normalize_date(date_part)
+        normalized_text = f"{normalized_date} {time_part}"
+        shifts[normalized_text] = user_name
         save_shifts()
-        await update.message.reply_text(f"✅ {user_name}, вы записаны на: {text}")
+        await update.message.reply_text(f"✅ {user_name}, вы записаны на: {normalized_text}")
     else:
         await update.message.reply_text(
             "❌ Неправильный формат!\n\n"
@@ -257,11 +267,11 @@ def main():
     application.add_handler(CommandHandler("graph", show_graph))
     application.add_handler(CommandHandler("myshift", my_shift))
     application.add_handler(CommandHandler("cancel", cancel_shift))
-    application.add_handler(CommandHandler("clear_all", clear_all))  # ⬅️ НОВАЯ КОМАНДА
+    application.add_handler(CommandHandler("clear_all", clear_all))
     application.add_handler(CommandHandler("help", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("✅ Бот запущен на Railway с админ-командой!")
+    print("✅ Бот запущен на Railway с нормализацией дат!")
     application.run_polling()
 
 if __name__ == "__main__":
