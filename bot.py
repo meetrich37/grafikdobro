@@ -36,6 +36,43 @@ def normalize_date(date_str):
     except:
         return date_str
 
+# Функция для проверки пересечения времени
+def has_time_conflict(new_date, new_time):
+    try:
+        new_start, new_end = new_time.split('-')
+        
+        # Преобразуем время в минуты
+        def time_to_minutes(time_str):
+            hours, minutes = time_str.split('.')
+            return int(hours) * 60 + int(minutes)
+        
+        new_start_min = time_to_minutes(new_start)
+        new_end_min = time_to_minutes(new_end)
+        
+        # Проверяем все существующие записи
+        for shift_text in shifts.keys():
+            if ' ' in shift_text:
+                existing_date, existing_time = shift_text.split(' ', 1)
+                
+                # Проверяем только совпадающие даты
+                if existing_date != new_date:
+                    continue
+                    
+                # Извлекаем время из существующей записи
+                if '-' in existing_time:
+                    existing_start, existing_end = existing_time.split('-')
+                    
+                    existing_start_min = time_to_minutes(existing_start)
+                    existing_end_min = time_to_minutes(existing_end)
+                    
+                    # Проверяем пересечение
+                    # Если новое время начинается ДО конца существующего И заканчивается ПОСЛЕ начала существующего
+                    if (new_start_min < existing_end_min and new_end_min > existing_start_min):
+                        return True
+        return False
+    except:
+        return False
+
 # Функция проверки админа
 def is_admin(update: Update):
     return update.message.from_user.username in ADMINS
@@ -231,6 +268,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Нормализуем дату (3.12 → 03.12)
         normalized_date = normalize_date(date_part)
         normalized_text = f"{normalized_date} {time_part}"
+        
+        # ПРОВЕРЯЕМ ПЕРЕСЕЧЕНИЕ ВРЕМЕНИ
+        if has_time_conflict(normalized_date, time_part):
+            await update.message.reply_text(
+                f"❌ ВРЕМЯ ЗАНЯТО!\n"
+                f"На {normalized_date} в это время уже есть запись.\n"
+                f"Посмотрите свободное время: /graph"
+            )
+            return
+        
+        # Сохраняем запись
         shifts[normalized_text] = user_name
         save_shifts()
         await update.message.reply_text(f"✅ {user_name}, вы записаны на: {normalized_text}")
@@ -271,7 +319,7 @@ def main():
     application.add_handler(CommandHandler("help", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("✅ Бот запущен на Railway с нормализацией дат!")
+    print("✅ Бот запущен на Railway с запретом пересечений!")
     application.run_polling()
 
 if __name__ == "__main__":
