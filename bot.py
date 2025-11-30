@@ -7,6 +7,7 @@ from datetime import datetime
 
 # Настройки
 TOKEN = "8128748378:AAF7AJSxU6kj0xE_Ndf0Q6YoP7-ngyRaszc"
+ADMINS = ["ddobryden37", "anydobro"]  # ⬅️ Оба админа (без @)
 
 # Включим логирование
 logging.basicConfig(level=logging.INFO)
@@ -26,16 +27,49 @@ def save_shifts():
 # Загружаем данные
 shifts = load_shifts()
 
+# Функция проверки админа
+def is_admin(update: Update):
+    return update.message.from_user.username in ADMINS
+
 # Команда /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if is_admin(update):
+        await update.message.reply_text(
+            "☕ Бот для записи на смены бариста!\n\n"
+            "Команды:\n"
+            "/record - 📝 Записаться на смену\n"
+            "/graph - 👀 Посмотреть график\n"
+            "/cancel - ❌ Отменить запись\n"
+            "/myshift - 📋 Моя запись\n"
+            "/clear_all - 🚨 Очистить ВСЕ записи (админ)\n"
+            "/help - ❓ Помощь"
+        )
+    else:
+        await update.message.reply_text(
+            "☕ Бот для записи на смены бариста!\n\n"
+            "Команды:\n"
+            "/record - 📝 Записаться на смену\n"
+            "/graph - 👀 Посмотреть график\n"
+            "/cancel - ❌ Отменить запись\n"
+            "/myshift - 📋 Моя запись\n"
+            "/help - ❓ Помощь"
+        )
+
+# Команда /clear_all - ТОЛЬКО ДЛЯ АДМИНА
+async def clear_all(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update):
+        await update.message.reply_text("❌ Эта команда только для администратора!")
+        return
+    
+    global shifts
+    shifts_count = len(shifts)
+    shifts = {}
+    save_shifts()
+    
     await update.message.reply_text(
-        "☕ Бот для записи на смены бариста!\n\n"
-        "Команды:\n"
-        "/record - 📝 Записаться на смену\n"
-        "/graph - 👀 Посмотреть график\n"
-        "/cancel - ❌ Отменить запись\n"
-        "/myshift - 📋 Моя запись\n"
-        "/help - ❓ Помощь"
+        f"🚨 ВСЕ ЗАПИСИ ОЧИЩЕНЫ!\n"
+        f"🗑️ Удалено записей: {shifts_count}\n"
+        f"📊 График полностью пуст!"
     )
 
 # Команда /record
@@ -218,10 +252,11 @@ def main():
     application.add_handler(CommandHandler("graph", show_graph))
     application.add_handler(CommandHandler("myshift", my_shift))
     application.add_handler(CommandHandler("cancel", cancel_shift))
+    application.add_handler(CommandHandler("clear_all", clear_all))  # ⬅️ НОВАЯ КОМАНДА
     application.add_handler(CommandHandler("help", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("✅ Бот запущен на Railway!")
+    print("✅ Бот запущен на Railway с админ-командой!")
     application.run_polling()
 
 if __name__ == "__main__":
